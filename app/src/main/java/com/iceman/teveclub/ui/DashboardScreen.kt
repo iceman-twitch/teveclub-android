@@ -153,35 +153,27 @@ fun DashboardScreen(vm: TeveViewModel) {
                 ) {
                     // Left side: status info
                     Column {
-                        s.feedCountText?.let {
-                            Text(
-                                "🍖 $it",
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
                         if (s.canFeed) {
                             Text(
-                                "⚠️ Éhes!",
+                                "Éhes!",
                                 color = Color(0xFFFFD54F),
-                                fontSize = 13.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         } else {
                             Text(
-                                "✅ Jóllakott",
+                                "Jóllakott",
                                 color = Color(0xFF81C784),
-                                fontSize = 13.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
 
-                    // Right side: trick info
+                    // Right side: activity text
                     s.trick?.let { trick ->
                         Text(
-                            "🎓 $trick",
+                            trick,
                             color = Color.White,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -269,10 +261,10 @@ fun DashboardScreen(vm: TeveViewModel) {
                                         showLearnDialog = true
                                     }
                                     is TeveApiRepository.LearnPageState.NoOptionsButCanLearn -> {
-                                        actionMessage = "📚 Tanulj teve! (nincs választható lecke)"
+                                        actionMessage = "Tanulj teve! (nincs választható lecke)"
                                     }
                                     is TeveApiRepository.LearnPageState.AlreadyLearnedAll -> {
-                                        actionMessage = "🎓 Már mindent megtanult!"
+                                        actionMessage = "Már mindent megtanult!"
                                     }
                                     null -> {}
                                 }
@@ -342,13 +334,13 @@ fun DashboardScreen(vm: TeveViewModel) {
         // === FOOD PICKER DIALOG ===
         if (showFoodPicker) {
             PickerDialog(
-                title = "🥘 Kaja beállítása",
+                title = "Kaja beállítása",
                 onDismiss = { showFoodPicker = false }
             ) {
                 FOOD_LIST.forEach { food ->
                     PickerRow(emoji = food.emoji, name = food.name) {
                         vm.setFood(food.id) { ok, msg2 ->
-                            actionMessage = if (ok) "✅ ${food.name} beállítva!" else "❌ $msg2"
+                            actionMessage = if (ok) "${food.name} beállítva!" else msg2
                         }
                         showFoodPicker = false
                     }
@@ -359,13 +351,13 @@ fun DashboardScreen(vm: TeveViewModel) {
         // === DRINK PICKER DIALOG ===
         if (showDrinkPicker) {
             PickerDialog(
-                title = "🥤 Ital beállítása",
+                title = "Ital beállítása",
                 onDismiss = { showDrinkPicker = false }
             ) {
                 DRINK_LIST.forEach { drink ->
                     PickerRow(emoji = drink.emoji, name = drink.name) {
                         vm.setDrink(drink.id) { ok, msg2 ->
-                            actionMessage = if (ok) "✅ ${drink.name} beállítva!" else "❌ $msg2"
+                            actionMessage = if (ok) "${drink.name} beállítva!" else msg2
                         }
                         showDrinkPicker = false
                     }
@@ -377,7 +369,7 @@ fun DashboardScreen(vm: TeveViewModel) {
         if (showGuessDialog) {
             AlertDialog(
                 onDismissRequest = { showGuessDialog = false },
-                title = { Text("🎲 Számjáték", fontWeight = FontWeight.Bold) },
+                title = { Text("Számjáték", fontWeight = FontWeight.Bold) },
                 text = {
                     Column {
                         OutlinedTextField(
@@ -399,7 +391,7 @@ fun DashboardScreen(vm: TeveViewModel) {
                         onClick = {
                             if (guessInput.isNotEmpty()) {
                                 vm.guessNumber(guessInput) { ok, msg2 ->
-                                    guessResult = if (ok) "✅ $msg2" else "❌ $msg2"
+                                    guessResult = msg2
                                 }
                             }
                         },
@@ -421,13 +413,13 @@ fun DashboardScreen(vm: TeveViewModel) {
         // === LEARN PICKER DIALOG ===
         if (showLearnDialog && learnOptions.isNotEmpty()) {
             PickerDialog(
-                title = "📚 Tanítás választás",
+                title = "Tanítás választás",
                 onDismiss = { showLearnDialog = false }
             ) {
                 learnOptions.forEach { option ->
-                    PickerRow(emoji = "🎓", name = option.name) {
+                    PickerRow(emoji = "📖", name = option.name) {
                         vm.submitLearn(option.value) { ok, msg2 ->
-                            actionMessage = if (ok) "✅ $msg2" else "❌ $msg2"
+                            actionMessage = msg2
                         }
                         showLearnDialog = false
                     }

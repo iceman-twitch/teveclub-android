@@ -68,12 +68,10 @@ class TeveViewModel(application: Application) : AndroidViewModel(application) {
     fun feedPet() {
         viewModelScope.launch {
             _isLoading.value = true
-            _statusMessage.value = "Etetés folyamatban..."
-            val res = repo.feedUntilFull { progress ->
-                _statusMessage.value = progress
-            }
+            _statusMessage.value = null
+            val res = repo.feedUntilFull { _ -> }
             _isLoading.value = false
-            _statusMessage.value = if (res.isSuccess) res.getOrNull() else res.exceptionOrNull()?.message
+            _statusMessage.value = null
             loadCamelStatus()
         }
     }

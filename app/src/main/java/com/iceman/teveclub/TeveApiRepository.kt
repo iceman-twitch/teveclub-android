@@ -76,15 +76,19 @@ class TeveApiRepository(private val context: Context) {
                 val feedCountText = feedCountMatch?.value
 
                 // Extract pet activity image/gif URL
-                // Find the img tag that follows "Tevéd most éppen" text
-                val petImageEl = doc.getElementsContainingOwnText("Tevéd most éppen").firstOrNull()
-                    ?.nextElementSiblings()?.select("img")?.firstOrNull()
-                    ?: doc.select("img[src*=/images/farm/]").firstOrNull()
+                // The img is INSIDE the div containing "Tevéd most éppen" text
+                val activityDiv = doc.getElementsContainingOwnText("Tev\u00e9d most \u00e9ppen").firstOrNull()
+                val petImageEl = activityDiv?.select("img")?.firstOrNull()
+                    ?: doc.select("img[src*=/images/farm/truk/]").firstOrNull()
                 val petImageSrc = petImageEl?.attr("src")
                 val petImageUrl = if (!petImageSrc.isNullOrBlank()) {
                     if (petImageSrc.startsWith("http")) petImageSrc
                     else "https://teveclub.hu/$petImageSrc"
                 } else null
+
+                // Parse trick/activity text from "Tevéd most éppen ..." div
+                val activityText = activityDiv?.ownText()?.trim()
+                    ?.replace("Tev\u00e9d most \u00e9ppen", "")?.trim()?.trimEnd('.')
 
                 // Extract trick image from /images/farm/truk/ path
                 val trickImgEl = doc.select("img[src*=/images/farm/truk/]").firstOrNull()
@@ -97,7 +101,7 @@ class TeveApiRepository(private val context: Context) {
                 Result.success(CamelStatus(
                     foodId = foodMatch?.groupValues?.get(1),
                     drinkId = drinkMatch?.groupValues?.get(1),
-                    trick = trick,
+                    trick = activityText ?: trick,
                     canFeed = canFeed,
                     feedCountText = feedCountText,
                     fullHtml = page,
