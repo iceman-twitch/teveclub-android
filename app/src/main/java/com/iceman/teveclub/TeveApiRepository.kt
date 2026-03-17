@@ -51,10 +51,12 @@ class TeveApiRepository(private val context: Context) {
         val fullHtml: String = "",
         val petImageUrl: String? = null,
         val trickImageUrl: String? = null,
-        val foodCount: Int? = null,
-        val foodMax: Int? = null,
-        val drinkCount: Int? = null,
-        val drinkMax: Int? = null,
+        val foodPercent: Int = 0,
+        val drinkPercent: Int = 0,
+        val foodCount: Int = 0,
+        val foodMax: Int = 7,
+        val drinkCount: Int = 0,
+        val drinkMax: Int = 7,
         val foodImageUrl: String? = null,
         val drinkImageUrl: String? = null
     )
@@ -68,86 +70,76 @@ class TeveApiRepository(private val context: Context) {
                 val foodMatch = Regex("""Etet[őo].*?/(\d+)\.gif""", RegexOption.DOT_MATCHES_ALL).find(page)
                 val drinkMatch = Regex("""Itat[óo].*?/(\d+)\.gif""", RegexOption.DOT_MATCHES_ALL).find(page)
 
-                // Parse trick text
                 val doc = Jsoup.parse(page)
-                val trickEl = doc.select("div:containsOwn(Tanult trükk)").firstOrNull()
-                    ?: doc.select("div:containsOwn(trükk)").firstOrNull()
-                val trick = trickEl?.ownText()?.trim()
 
                 // Check if feeding is possible
                 val canFeed = page.contains("Mehet!", ignoreCase = true)
 
-                // Try to parse feed count from page (e.g. "5/10" pattern)
-                val feedCountMatch = Regex("""(\d+)\s*/\s*(\d+)""").find(page)
-                val feedCountText = feedCountMatch?.value
+                // Parse Súly (weight = food fullness) percentage: "(100%)" pattern after "Súly:" text
+                val sulySection = page.substringAfter("S\u00faly:", "").substringBefore("Kedv:", "")
+                val foodPercentMatch = Regex("""\((\d+)%\)""").find(sulySection)
+                val foodPercent = foodPercentMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0
 
-                // Parse food/drink counts separately from Etető/Itató sections
-                val etetoIdx = page.indexOf("Etet", ignoreCase = true)
-                val itatoIdx = page.indexOf("Itat", ignoreCase = true)
-                val feedSection = if (etetoIdx >= 0 && itatoIdx > etetoIdx)
-                    page.substring(etetoIdx, itatoIdx)
-                else if (etetoIdx >= 0)
-                    page.substring(etetoIdx, minOf(etetoIdx + 500, page.length))
-                else ""
-                val drinkSection = if (itatoIdx >= 0)
-                    page.substring(itatoIdx, minOf(itatoIdx + 500, page.length))
-                else ""
+                // Parse Kedv (mood = drink fullness) percentage
+                val kedvSection = page.substringAfter("Kedv:", "")
+                val drinkPercentMatch = Regex("""\((\d+)%\)""").find(kedvSection)
+                val drinkPercent = drinkPercentMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0
 
-                val foodCntMatch = Regex("""(\d+)\s*/\s*(\d+)""").find(feedSection)
-                val foodCount = foodCntMatch?.groupValues?.get(1)?.toIntOrNull()
-                val foodMax = foodCntMatch?.groupValues?.get(2)?.toIntOrNull()
-                val drinkCntMatch = Regex("""(\d+)\s*/\s*(\d+)""").find(drinkSection)
-                val drinkCount = drinkCntMatch?.groupValues?.get(1)?.toIntOrNull()
-                val drinkMax = drinkCntMatch?.groupValues?.get(2)?.toIntOrNull()
+                // Count food icons in Etető section (each <img> = 1 fed, max 7)
+                val etetoSection = page.substringAfter("Etet", "").substringBefore("Itat", "")
+                val foodCount = Regex("""/images/farm/kaja/""").findAll(etetoSection).count().coerceAtMost(7)
 
-                // Parse food/drink image URLs from their sections
-                val foodImgMatch = Regex("""<img[^>]*src=["']?([^"'\s>]*?\d+\.gif)["']?""", RegexOption.IGNORE_CASE).find(feedSection)
-                val foodImgSrc = foodImgMatch?.groupValues?.get(1)
-                val foodImageUrl = if (!foodImgSrc.isNullOrBlank()) {
-                    if (foodImgSrc.startsWith("http")) foodImgSrc else "https://teveclub.hu/$foodImgSrc"
-                } else null
-                val drinkImgMatch = Regex("""<img[^>]*src=["']?([^"'\s>]*?\d+\.gif)["']?""", RegexOption.IGNORE_CASE).find(drinkSection)
-                val drinkImgSrc = drinkImgMatch?.groupValues?.get(1)
-                val drinkImageUrl = if (!drinkImgSrc.isNullOrBlank()) {
-                    if (drinkImgSrc.startsWith("http")) drinkImgSrc else "https://teveclub.hu/$drinkImgSrc"
-                } else null
+                // Count drink icons in Itató section
+                val itatoSection = page.substringAfter("Itat", "").substringBefore("<a name", page.substringAfter("Itat", "").take(1000))
+                val drinkCount = Regex("""/images/farm/pia/""").findAll(itatoSection).count().coerceAtMost(7)
 
-                // Extract pet activity image/gif URL
-                // The img is INSIDE the div containing "Tevéd most éppen" text
+                // Get food/drink icon URLs
+                val foodImgMatch = Regex("""/images/farm/kaja/(\d+)\.gif""").find(page)
+                val foodImageUrl = foodImgMatch?.let { "https://teveclub.hu${it.value}" }
+                val drinkImgMatch = Regex("""/images/farm/pia/(\d+)\.gif""").find(page)
+                val drinkImageUrl = drinkImgMatch?.let { "https://teveclub.hu${it.value}" }
+
+                // Parse trick text
+                val trickEl = doc.select("div:containsOwn(Tanult tr\u00fckk)").firstOrNull()
+                    ?: doc.select("div:containsOwn(tr\u00fckk)").firstOrNull()
+                val trick = trickEl?.ownText()?.trim()
+
+                // Extract pet image: trick animations are Flash SWF objects, not <img> tags
+                // Parse the SWF object data URL to extract trick type for constructing image URL
+                val swfMatch = Regex("""data="(/images/farm/sutr/container\.swf\?[^"]+)"""").find(page)
+                val swfUrl = swfMatch?.groupValues?.get(1)
+                val tipusMatch = swfUrl?.let { Regex("""tipus=(\w+)""").find(it) }
+                val tipus = tipusMatch?.groupValues?.get(1)
+
+                // Try to find a static image: first check for <img> in activityDiv, then try Flash params
                 val activityDiv = doc.getElementsContainingOwnText("Tev\u00e9d most \u00e9ppen").firstOrNull()
                 val petImageEl = activityDiv?.select("img")?.firstOrNull()
-                    ?: doc.select("img[src*=/images/farm/truk/]").firstOrNull()
-                val petImageSrc = petImageEl?.attr("src")
-                val petImageUrl = if (!petImageSrc.isNullOrBlank()) {
-                    if (petImageSrc.startsWith("http")) petImageSrc
-                    else "https://teveclub.hu/$petImageSrc"
-                } else null
+                val petImageUrl = when {
+                    petImageEl != null -> {
+                        val src = petImageEl.attr("src")
+                        if (src.startsWith("http")) src else "https://teveclub.hu/$src"
+                    }
+                    // Use SWF data URL as fallback to let Ruffle/WebView handle it - or null
+                    else -> null
+                }
 
                 // Parse trick/activity text from "Tevéd most éppen ..." div
                 val activityText = activityDiv?.ownText()?.trim()
                     ?.replace("Tev\u00e9d most \u00e9ppen", "")?.trim()?.trimEnd('.')
-
-                // Extract trick image from /images/farm/truk/ path
-                val trickImgEl = doc.select("img[src*=/images/farm/truk/]").firstOrNull()
-                val trickImgSrc = trickImgEl?.attr("src")
-                val trickImageUrl = if (!trickImgSrc.isNullOrBlank()) {
-                    if (trickImgSrc.startsWith("http")) trickImgSrc
-                    else "https://teveclub.hu/$trickImgSrc"
-                } else null
 
                 Result.success(CamelStatus(
                     foodId = foodMatch?.groupValues?.get(1),
                     drinkId = drinkMatch?.groupValues?.get(1),
                     trick = activityText ?: trick,
                     canFeed = canFeed,
-                    feedCountText = feedCountText,
                     fullHtml = page,
                     petImageUrl = petImageUrl,
-                    trickImageUrl = trickImageUrl,
+                    foodPercent = foodPercent,
+                    drinkPercent = drinkPercent,
                     foodCount = foodCount,
-                    foodMax = foodMax,
+                    foodMax = 7,
                     drinkCount = drinkCount,
-                    drinkMax = drinkMax,
+                    drinkMax = 7,
                     foodImageUrl = foodImageUrl,
                     drinkImageUrl = drinkImageUrl
                 ))

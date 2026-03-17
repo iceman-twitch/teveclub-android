@@ -152,8 +152,9 @@ fun DashboardScreen(vm: TeveViewModel) {
                 // Food progress bar
                 FeedProgressBar(
                     label = "Kaja",
-                    current = s.foodCount,
+                    count = s.foodCount,
                     max = s.foodMax,
+                    percent = s.foodPercent,
                     color = Color(0xFFFF8A65),
                     iconUrl = s.foodImageUrl,
                     imageLoader = imageLoader
@@ -162,21 +163,34 @@ fun DashboardScreen(vm: TeveViewModel) {
                 // Drink progress bar
                 FeedProgressBar(
                     label = "Ital",
-                    current = s.drinkCount,
+                    count = s.drinkCount,
                     max = s.drinkMax,
+                    percent = s.drinkPercent,
                     color = Color(0xFF4FC3F7),
                     iconUrl = s.drinkImageUrl,
                     imageLoader = imageLoader
                 )
 
                 // Status text
-                Text(
-                    if (s.canFeed) "Éhes!" else "Tevéd jóllakott",
-                    color = if (s.canFeed) Color(0xFFFFD54F) else Color(0xFF81C784),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        if (s.canFeed) "Éhes!" else "Tevéd jóllakott",
+                        color = if (s.canFeed) Color(0xFFFFD54F) else Color(0xFF81C784),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    s.trick?.let { trick ->
+                        Text(
+                            trick,
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
             }
         }
 
@@ -610,14 +624,14 @@ fun PickerRow(emoji: String, name: String, onClick: () -> Unit) {
 @Composable
 fun FeedProgressBar(
     label: String,
-    current: Int?,
-    max: Int?,
+    count: Int,
+    max: Int,
+    percent: Int,
     color: Color,
     iconUrl: String?,
     imageLoader: ImageLoader
 ) {
-    val progress = if (current != null && max != null && max > 0)
-        current.toFloat() / max.toFloat() else 0f
+    val progress = percent.toFloat() / 100f
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = tween(durationMillis = 800)
@@ -628,7 +642,7 @@ fun FeedProgressBar(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Food/drink icon
+        // Food/drink icon from teveclub
         if (iconUrl != null) {
             AsyncImage(
                 model = ImageRequest.Builder(context)
@@ -670,22 +684,20 @@ fun FeedProgressBar(
                     )
             )
             // Count text centered on bar
-            if (current != null && max != null) {
-                Text(
-                    "$current / $max",
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
+            Text(
+                "$count / $max",
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.Center)
+            )
         }
 
         Spacer(Modifier.width(8.dp))
 
         // Percentage
         Text(
-            "${(progress * 100).toInt()}%",
+            "$percent%",
             color = Color.White,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
