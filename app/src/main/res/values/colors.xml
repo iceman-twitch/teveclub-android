@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="teve_background">#E8D4A0</color>
+    <color name="teve_panel">#FFF9E6</color>
+    <color name="teve_border">#8B6914</color>
+    <color name="teve_heading">#8B4513</color>
+    <color name="teve_body">#4A3820</color>
+    <color name="teve_button_blue">#1E5A9D</color>
+    <color name="teve_status_gold">#D4A574</color>
+</resources>
