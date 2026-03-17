@@ -104,27 +104,44 @@ class TeveApiRepository(private val context: Context) {
                     ?: doc.select("div:containsOwn(tr\u00fckk)").firstOrNull()
                 val trick = trickEl?.ownText()?.trim()
 
-                // Extract pet image: trick animations are Flash SWF objects, not <img> tags
-                // Parse the SWF object data URL to extract trick type for constructing image URL
-                val swfMatch = Regex("""data="(/images/farm/sutr/container\.swf\?[^"]+)"""").find(page)
-                val swfUrl = swfMatch?.groupValues?.get(1)
-                val tipusMatch = swfUrl?.let { Regex("""tipus=(\w+)""").find(it) }
-                val tipus = tipusMatch?.groupValues?.get(1)
+                // Extract pet image: trick animations are Flash SWF objects
+                // Parse tr= and tipus= from the SWF URL to construct static GIF URL
+                val swfMatch = Regex("""container\.swf\?[^"]*tr=(\d+)[^"]*tipus=(\w+)""").find(page)
+                val trId = swfMatch?.groupValues?.get(1)
+                val tipus = swfMatch?.groupValues?.get(2)
 
-                // Try to find a static image: first check for <img> in activityDiv, then try Flash params
-                val activityDiv = doc.getElementsContainingOwnText("Tev\u00e9d most \u00e9ppen").firstOrNull()
-                val petImageEl = activityDiv?.select("img")?.firstOrNull()
-                val petImageUrl = when {
-                    petImageEl != null -> {
-                        val src = petImageEl.attr("src")
-                        if (src.startsWith("http")) src else "https://teveclub.hu/$src"
+                // Try to find a static trick GIF at /images/farm/truk/tr{id}_{suffix}.gif
+                // First try the exact tipus, then try other common suffixes
+                var petImageUrl: String? = null
+                if (trId != null) {
+                    val suffixes = mutableListOf<String>()
+                    if (tipus != null) suffixes.add(tipus)
+                    suffixes.addAll(listOf("1a", "1b", "0a", "0b").filter { it != tipus })
+                    for (suffix in suffixes) {
+                        val testUrl = "https://teveclub.hu/images/farm/truk/tr${trId}_${suffix}.gif"
+                        try {
+                            val testResp = api.checkUrl(testUrl)
+                            if (testResp.isSuccessful) {
+                                petImageUrl = testUrl
+                                break
+                            }
+                        } catch (_: Exception) { }
                     }
-                    // Use SWF data URL as fallback to let Ruffle/WebView handle it - or null
-                    else -> null
+                }
+
+                // Fallback: check for <img> in the activity div
+                if (petImageUrl == null) {
+                    val activityDiv = doc.getElementsContainingOwnText("Tev\u00e9d most \u00e9ppen").firstOrNull()
+                    val petImageEl = activityDiv?.select("img")?.firstOrNull()
+                    if (petImageEl != null) {
+                        val src = petImageEl.attr("src")
+                        petImageUrl = if (src.startsWith("http")) src else "https://teveclub.hu/$src"
+                    }
                 }
 
                 // Parse trick/activity text from "Tevéd most éppen ..." div
-                val activityText = activityDiv?.ownText()?.trim()
+                val activityDiv2 = doc.getElementsContainingOwnText("Tev\u00e9d most \u00e9ppen").firstOrNull()
+                val activityText = activityDiv2?.ownText()?.trim()
                     ?.replace("Tev\u00e9d most \u00e9ppen", "")?.trim()?.trimEnd('.')
 
                 Result.success(CamelStatus(
