@@ -2,6 +2,8 @@ package com.iceman.teveclub.ui
 
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -130,60 +132,51 @@ fun DashboardScreen(vm: TeveViewModel) {
             }
         }
 
-        // === TOP STATUS BAR (overlay) ===
+        // === TOP STATUS BAR with progress bars ===
         status.value?.let { s ->
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color.Black.copy(alpha = 0.5f),
+                                Color.Black.copy(alpha = 0.6f),
                                 Color.Transparent
                             )
                         )
                     )
-                    .padding(top = 36.dp, start = 16.dp, end = 16.dp, bottom = 24.dp)
+                    .padding(top = 36.dp, start = 16.dp, end = 16.dp, bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Left side: status info
-                    Column {
-                        if (s.canFeed) {
-                            Text(
-                                "Éhes!",
-                                color = Color(0xFFFFD54F),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        } else {
-                            Text(
-                                "Jóllakott",
-                                color = Color(0xFF81C784),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                // Food progress bar
+                FeedProgressBar(
+                    label = "Kaja",
+                    current = s.foodCount,
+                    max = s.foodMax,
+                    color = Color(0xFFFF8A65),
+                    iconUrl = s.foodImageUrl,
+                    imageLoader = imageLoader
+                )
 
-                    // Right side: activity text
-                    s.trick?.let { trick ->
-                        Text(
-                            trick,
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color.Black.copy(alpha = 0.3f))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
+                // Drink progress bar
+                FeedProgressBar(
+                    label = "Ital",
+                    current = s.drinkCount,
+                    max = s.drinkMax,
+                    color = Color(0xFF4FC3F7),
+                    iconUrl = s.drinkImageUrl,
+                    imageLoader = imageLoader
+                )
+
+                // Status text
+                Text(
+                    if (s.canFeed) "Éhes!" else "Tevéd jóllakott",
+                    color = if (s.canFeed) Color(0xFFFFD54F) else Color(0xFF81C784),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
             }
         }
 
@@ -412,19 +405,77 @@ fun DashboardScreen(vm: TeveViewModel) {
 
         // === LEARN PICKER DIALOG ===
         if (showLearnDialog && learnOptions.isNotEmpty()) {
-            PickerDialog(
-                title = "Tanítás választás",
-                onDismiss = { showLearnDialog = false }
-            ) {
-                learnOptions.forEach { option ->
-                    PickerRow(emoji = "📖", name = option.name) {
-                        vm.submitLearn(option.value) { ok, msg2 ->
-                            actionMessage = msg2
+            var selectedLesson by remember { mutableStateOf<TeveApiRepository.LearnOption?>(null) }
+            AlertDialog(
+                onDismissRequest = { showLearnDialog = false },
+                title = { Text("Tanítás", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                text = {
+                    Column(
+                        modifier = Modifier
+                            .heightIn(max = 300.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        learnOptions.forEach { option ->
+                            val isSelected = selectedLesson == option
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(
+                                        if (isSelected) TeveColors.ButtonBlue.copy(alpha = 0.15f)
+                                        else Color.Transparent
+                                    )
+                                    .border(
+                                        width = if (isSelected) 2.dp else 1.dp,
+                                        color = if (isSelected) TeveColors.ButtonBlue else Color.LightGray,
+                                        shape = RoundedCornerShape(10.dp)
+                                    )
+                                    .clickable { selectedLesson = option }
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = isSelected,
+                                    onClick = { selectedLesson = option },
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = TeveColors.ButtonBlue
+                                    )
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    option.name,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 15.sp,
+                                    color = TeveColors.BodyText
+                                )
+                            }
+                            Spacer(Modifier.height(6.dp))
                         }
-                        showLearnDialog = false
                     }
-                }
-            }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            selectedLesson?.let { lesson ->
+                                vm.submitLearn(lesson.value) { _, _ ->
+                                    // silently reload status, no message
+                                }
+                                showLearnDialog = false
+                            }
+                        },
+                        enabled = selectedLesson != null && !isLoading.value,
+                        colors = ButtonDefaults.buttonColors(backgroundColor = TeveColors.ButtonBlue)
+                    ) {
+                        Text("Tanítás!", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showLearnDialog = false }) {
+                        Text("Mégse")
+                    }
+                },
+                shape = RoundedCornerShape(16.dp)
+            )
         }
     }
 }
@@ -557,25 +608,102 @@ fun PickerRow(emoji: String, name: String, onClick: () -> Unit) {
 }
 
 @Composable
+fun FeedProgressBar(
+    label: String,
+    current: Int?,
+    max: Int?,
+    color: Color,
+    iconUrl: String?,
+    imageLoader: ImageLoader
+) {
+    val progress = if (current != null && max != null && max > 0)
+        current.toFloat() / max.toFloat() else 0f
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 800)
+    )
+    val context = LocalContext.current
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Food/drink icon
+        if (iconUrl != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(iconUrl)
+                    .crossfade(true)
+                    .build(),
+                imageLoader = imageLoader,
+                contentDescription = label,
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(4.dp))
+            )
+            Spacer(Modifier.width(8.dp))
+        } else {
+            Text(
+                if (label == "Kaja") "🍖" else "💧",
+                fontSize = 18.sp
+            )
+            Spacer(Modifier.width(8.dp))
+        }
+
+        // Progress bar
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(18.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .background(Color.White.copy(alpha = 0.25f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(color.copy(alpha = 0.7f), color)
+                        )
+                    )
+            )
+            // Count text centered on bar
+            if (current != null && max != null) {
+                Text(
+                    "$current / $max",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+        }
+
+        Spacer(Modifier.width(8.dp))
+
+        // Percentage
+        Text(
+            "${(progress * 100).toInt()}%",
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.width(36.dp)
+        )
+    }
+}
+
+@Composable
 fun StatusMessageBox(message: String) {
-    val bgColor = when {
-        message.startsWith("✅") -> Color(0xFFD4EDDA)
-        message.startsWith("❌") -> Color(0xFFF8D7DA)
-        else -> Color(0xFFD1ECF1)
-    }
-    val textColor = when {
-        message.startsWith("✅") -> Color(0xFF155724)
-        message.startsWith("❌") -> Color(0xFF721C24)
-        else -> Color(0xFF0C5460)
-    }
     Text(
         message,
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(bgColor.copy(alpha = 0.95f))
+            .background(Color.Black.copy(alpha = 0.7f))
             .padding(12.dp),
-        color = textColor,
+        color = Color.White,
         fontSize = 14.sp,
         textAlign = TextAlign.Center
     )

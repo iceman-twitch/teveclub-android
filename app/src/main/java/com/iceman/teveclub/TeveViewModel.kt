@@ -118,7 +118,7 @@ class TeveViewModel(application: Application) : AndroidViewModel(application) {
             val res = repo.submitLearn(lessonId)
             _isLoading.value = false
             if (res.isSuccess) {
-                onResult(true, res.getOrNull())
+                onResult(true, null)
                 loadCamelStatus()
             } else onResult(false, res.exceptionOrNull()?.message)
         }

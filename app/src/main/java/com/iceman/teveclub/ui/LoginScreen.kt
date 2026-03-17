@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -234,10 +235,15 @@ fun LoginScreen(vm: TeveViewModel) {
                 fontSize = 12.sp,
                 color = TeveColors.SubtitleBrown.copy(alpha = 0.7f)
             )
+            val uriHandler = LocalUriHandler.current
             Text(
                 "© ICEMAN",
                 fontSize = 12.sp,
-                color = TeveColors.SubtitleBrown.copy(alpha = 0.7f)
+                color = TeveColors.ButtonBlue,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clickable {
+                    uriHandler.openUri("https://github.com/iceman-twitch")
+                }
             )
         }
     }

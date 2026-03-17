@@ -50,7 +50,13 @@ class TeveApiRepository(private val context: Context) {
         val feedCountText: String? = null,
         val fullHtml: String = "",
         val petImageUrl: String? = null,
-        val trickImageUrl: String? = null
+        val trickImageUrl: String? = null,
+        val foodCount: Int? = null,
+        val foodMax: Int? = null,
+        val drinkCount: Int? = null,
+        val drinkMax: Int? = null,
+        val foodImageUrl: String? = null,
+        val drinkImageUrl: String? = null
     )
 
     suspend fun getCamelStatus(): Result<CamelStatus> {
@@ -74,6 +80,37 @@ class TeveApiRepository(private val context: Context) {
                 // Try to parse feed count from page (e.g. "5/10" pattern)
                 val feedCountMatch = Regex("""(\d+)\s*/\s*(\d+)""").find(page)
                 val feedCountText = feedCountMatch?.value
+
+                // Parse food/drink counts separately from Etető/Itató sections
+                val etetoIdx = page.indexOf("Etet", ignoreCase = true)
+                val itatoIdx = page.indexOf("Itat", ignoreCase = true)
+                val feedSection = if (etetoIdx >= 0 && itatoIdx > etetoIdx)
+                    page.substring(etetoIdx, itatoIdx)
+                else if (etetoIdx >= 0)
+                    page.substring(etetoIdx, minOf(etetoIdx + 500, page.length))
+                else ""
+                val drinkSection = if (itatoIdx >= 0)
+                    page.substring(itatoIdx, minOf(itatoIdx + 500, page.length))
+                else ""
+
+                val foodCntMatch = Regex("""(\d+)\s*/\s*(\d+)""").find(feedSection)
+                val foodCount = foodCntMatch?.groupValues?.get(1)?.toIntOrNull()
+                val foodMax = foodCntMatch?.groupValues?.get(2)?.toIntOrNull()
+                val drinkCntMatch = Regex("""(\d+)\s*/\s*(\d+)""").find(drinkSection)
+                val drinkCount = drinkCntMatch?.groupValues?.get(1)?.toIntOrNull()
+                val drinkMax = drinkCntMatch?.groupValues?.get(2)?.toIntOrNull()
+
+                // Parse food/drink image URLs from their sections
+                val foodImgMatch = Regex("""<img[^>]*src=["']?([^"'\s>]*?\d+\.gif)["']?""", RegexOption.IGNORE_CASE).find(feedSection)
+                val foodImgSrc = foodImgMatch?.groupValues?.get(1)
+                val foodImageUrl = if (!foodImgSrc.isNullOrBlank()) {
+                    if (foodImgSrc.startsWith("http")) foodImgSrc else "https://teveclub.hu/$foodImgSrc"
+                } else null
+                val drinkImgMatch = Regex("""<img[^>]*src=["']?([^"'\s>]*?\d+\.gif)["']?""", RegexOption.IGNORE_CASE).find(drinkSection)
+                val drinkImgSrc = drinkImgMatch?.groupValues?.get(1)
+                val drinkImageUrl = if (!drinkImgSrc.isNullOrBlank()) {
+                    if (drinkImgSrc.startsWith("http")) drinkImgSrc else "https://teveclub.hu/$drinkImgSrc"
+                } else null
 
                 // Extract pet activity image/gif URL
                 // The img is INSIDE the div containing "Tevéd most éppen" text
@@ -106,7 +143,13 @@ class TeveApiRepository(private val context: Context) {
                     feedCountText = feedCountText,
                     fullHtml = page,
                     petImageUrl = petImageUrl,
-                    trickImageUrl = trickImageUrl
+                    trickImageUrl = trickImageUrl,
+                    foodCount = foodCount,
+                    foodMax = foodMax,
+                    drinkCount = drinkCount,
+                    drinkMax = drinkMax,
+                    foodImageUrl = foodImageUrl,
+                    drinkImageUrl = drinkImageUrl
                 ))
             } else Result.failure(Exception("Status failed: ${resp.code()}"))
         } catch (e: Exception) {
@@ -220,10 +263,7 @@ class TeveApiRepository(private val context: Context) {
         return try {
             val resp = api.submitLearn(lessonId)
             if (resp.isSuccessful) {
-                val page = html(resp.body())
-                val doc = Jsoup.parse(page)
-                val resultText = doc.body().text().take(200)
-                Result.success(resultText)
+                Result.success("Tanítás sikeres!")
             } else Result.failure(Exception("Tanítás hiba: ${resp.code()}"))
         } catch (e: Exception) {
             Result.failure(e)
