@@ -76,9 +76,10 @@ class TeveApiRepository(private val context: Context) {
                 val feedCountText = feedCountMatch?.value
 
                 // Extract pet activity image/gif URL
-                // XPath: /html/body/center/table/tbody/tr[1]/td[2]/center/table[3]/tbody/tr/td/table/tbody/tr[3]/td[2]/div[1]/img
-                val petImageEl = doc.select("center > table > tr:first-child > td:nth-child(2) > center > table:nth-of-type(3) tr:nth-child(3) > td:nth-child(2) > div:first-child > img").firstOrNull()
-                    ?: doc.select("table table table tr td div img").firstOrNull()
+                // Find the img tag that follows "Tevéd most éppen" text
+                val petImageEl = doc.getElementsContainingOwnText("Tevéd most éppen").firstOrNull()
+                    ?.nextElementSiblings()?.select("img")?.firstOrNull()
+                    ?: doc.select("img[src*=/images/farm/]").firstOrNull()
                 val petImageSrc = petImageEl?.attr("src")
                 val petImageUrl = if (!petImageSrc.isNullOrBlank()) {
                     if (petImageSrc.startsWith("http")) petImageSrc
