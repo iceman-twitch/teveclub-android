@@ -35,6 +35,7 @@ import coil.compose.AsyncImage
 import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
 import coil.request.ImageRequest
+import com.iceman.teveclub.TeveApiRepository
 import com.iceman.teveclub.TeveViewModel
 
 data class FoodItem(val id: String, val name: String, val emoji: String)
@@ -69,6 +70,8 @@ fun DashboardScreen(vm: TeveViewModel) {
     var showGuessDialog by remember { mutableStateOf(false) }
     var guessResult by remember { mutableStateOf<String?>(null) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
+    var showLearnDialog by remember { mutableStateOf(false) }
+    var learnOptions by remember { mutableStateOf<List<TeveApiRepository.LearnOption>>(emptyList()) }
 
     val context = LocalContext.current
 
@@ -259,7 +262,21 @@ fun DashboardScreen(vm: TeveViewModel) {
                         label = "Tanítás",
                         onClick = {
                             showMenu = false
-                            vm.loadLearnPage()
+                            vm.loadLearnPage { state ->
+                                when (state) {
+                                    is TeveApiRepository.LearnPageState.HasOptions -> {
+                                        learnOptions = state.options
+                                        showLearnDialog = true
+                                    }
+                                    is TeveApiRepository.LearnPageState.NoOptionsButCanLearn -> {
+                                        actionMessage = "📚 Tanulj teve! (nincs választható lecke)"
+                                    }
+                                    is TeveApiRepository.LearnPageState.AlreadyLearnedAll -> {
+                                        actionMessage = "🎓 Már mindent megtanult!"
+                                    }
+                                    null -> {}
+                                }
+                            }
                         }
                     )
 
@@ -399,6 +416,23 @@ fun DashboardScreen(vm: TeveViewModel) {
                 },
                 shape = RoundedCornerShape(16.dp)
             )
+        }
+
+        // === LEARN PICKER DIALOG ===
+        if (showLearnDialog && learnOptions.isNotEmpty()) {
+            PickerDialog(
+                title = "📚 Tanítás választás",
+                onDismiss = { showLearnDialog = false }
+            ) {
+                learnOptions.forEach { option ->
+                    PickerRow(emoji = "🎓", name = option.name) {
+                        vm.submitLearn(option.value) { ok, msg2 ->
+                            actionMessage = if (ok) "✅ $msg2" else "❌ $msg2"
+                        }
+                        showLearnDialog = false
+                    }
+                }
+            }
         }
     }
 }

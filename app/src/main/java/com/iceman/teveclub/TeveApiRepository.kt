@@ -171,13 +171,56 @@ class TeveApiRepository(private val context: Context) {
         }
     }
 
-    suspend fun getLearnPage(): Result<String> {
+    data class LearnOption(val value: String, val name: String)
+
+    sealed class LearnPageState {
+        data class HasOptions(val options: List<LearnOption>) : LearnPageState()
+        object NoOptionsButCanLearn : LearnPageState()
+        object AlreadyLearnedAll : LearnPageState()
+    }
+
+    suspend fun getLearnPage(): Result<LearnPageState> {
         return try {
             val resp = api.getLearnPage()
             if (resp.isSuccessful) {
                 val page = html(resp.body())
-                Result.success(page)
+                val doc = Jsoup.parse(page)
+
+                val select = doc.select("select[name=tudomany]").firstOrNull()
+                if (select != null) {
+                    val options = select.select("option").mapNotNull { opt ->
+                        val value = opt.attr("value")
+                        val name = opt.text().trim()
+                        if (value.isNotBlank() && name.isNotBlank()) LearnOption(value, name) else null
+                    }
+                    if (options.isNotEmpty()) {
+                        Result.success(LearnPageState.HasOptions(options))
+                    } else {
+                        Result.success(LearnPageState.AlreadyLearnedAll)
+                    }
+                } else {
+                    val learnButton = doc.select("input[name=learn]").firstOrNull()
+                    if (learnButton != null) {
+                        Result.success(LearnPageState.NoOptionsButCanLearn)
+                    } else {
+                        Result.success(LearnPageState.AlreadyLearnedAll)
+                    }
+                }
             } else Result.failure(Exception("Tanítás oldal hiba: ${resp.code()}"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun submitLearn(lessonId: String): Result<String> {
+        return try {
+            val resp = api.submitLearn(lessonId)
+            if (resp.isSuccessful) {
+                val page = html(resp.body())
+                val doc = Jsoup.parse(page)
+                val resultText = doc.body().text().take(200)
+                Result.success(resultText)
+            } else Result.failure(Exception("Tanítás hiba: ${resp.code()}"))
         } catch (e: Exception) {
             Result.failure(e)
         }

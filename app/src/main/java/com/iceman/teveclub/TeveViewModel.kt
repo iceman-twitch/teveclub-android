@@ -25,6 +25,9 @@ class TeveViewModel(application: Application) : AndroidViewModel(application) {
     private val _learnPageHtml = MutableStateFlow<String?>(null)
     val learnPageHtml: StateFlow<String?> = _learnPageHtml
 
+    private val _learnState = MutableStateFlow<TeveApiRepository.LearnPageState?>(null)
+    val learnState: StateFlow<TeveApiRepository.LearnPageState?> = _learnState
+
     fun login(username: String, password: String, onResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -95,13 +98,31 @@ class TeveViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun loadLearnPage() {
+    fun loadLearnPage(onResult: (TeveApiRepository.LearnPageState?) -> Unit) {
         viewModelScope.launch {
             _isLoading.value = true
             val res = repo.getLearnPage()
             _isLoading.value = false
-            if (res.isSuccess) _learnPageHtml.value = res.getOrNull()
-            else _statusMessage.value = res.exceptionOrNull()?.message
+            if (res.isSuccess) {
+                val state = res.getOrNull()
+                _learnState.value = state
+                onResult(state)
+            } else {
+                _statusMessage.value = res.exceptionOrNull()?.message
+                onResult(null)
+            }
+        }
+    }
+
+    fun submitLearn(lessonId: String, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val res = repo.submitLearn(lessonId)
+            _isLoading.value = false
+            if (res.isSuccess) {
+                onResult(true, res.getOrNull())
+                loadCamelStatus()
+            } else onResult(false, res.exceptionOrNull()?.message)
         }
     }
 

@@ -53,6 +53,13 @@ interface ApiService {
     suspend fun getLearnPage(): Response<ResponseBody>
 
     @FormUrlEncoded
+    @POST("tanit.pet")
+    suspend fun submitLearn(
+        @Field("tudomany") lessonId: String,
+        @Field("learn") submit: String = "Tanulj teve!"
+    ): Response<ResponseBody>
+
+    @FormUrlEncoded
     @POST("egyszam.pet")
     suspend fun guessNumber(
         @Field("honnan") guess: String,
