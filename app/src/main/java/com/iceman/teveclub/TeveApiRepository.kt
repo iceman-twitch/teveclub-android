@@ -49,7 +49,8 @@ class TeveApiRepository(private val context: Context) {
         val canFeed: Boolean = false,
         val feedCountText: String? = null,
         val fullHtml: String = "",
-        val petImageUrl: String? = null
+        val petImageUrl: String? = null,
+        val trickImageUrl: String? = null
     )
 
     suspend fun getCamelStatus(): Result<CamelStatus> {
@@ -84,6 +85,14 @@ class TeveApiRepository(private val context: Context) {
                     else "https://teveclub.hu/$petImageSrc"
                 } else null
 
+                // Extract trick image from /images/farm/truk/ path
+                val trickImgEl = doc.select("img[src*=/images/farm/truk/]").firstOrNull()
+                val trickImgSrc = trickImgEl?.attr("src")
+                val trickImageUrl = if (!trickImgSrc.isNullOrBlank()) {
+                    if (trickImgSrc.startsWith("http")) trickImgSrc
+                    else "https://teveclub.hu/$trickImgSrc"
+                } else null
+
                 Result.success(CamelStatus(
                     foodId = foodMatch?.groupValues?.get(1),
                     drinkId = drinkMatch?.groupValues?.get(1),
@@ -91,7 +100,8 @@ class TeveApiRepository(private val context: Context) {
                     canFeed = canFeed,
                     feedCountText = feedCountText,
                     fullHtml = page,
-                    petImageUrl = petImageUrl
+                    petImageUrl = petImageUrl,
+                    trickImageUrl = trickImageUrl
                 ))
             } else Result.failure(Exception("Status failed: ${resp.code()}"))
         } catch (e: Exception) {
@@ -174,11 +184,15 @@ class TeveApiRepository(private val context: Context) {
 
     suspend fun guessNumber(number: String): Result<String> {
         return try {
-            val resp = api.guessNumber(from = number)
+            val resp = api.guessNumber(guess = number)
             if (resp.isSuccessful) {
                 val page = html(resp.body())
                 val doc = Jsoup.parse(page)
-                val resultText = doc.body().text()
+                // Only extract the game result, not the whole page
+                val resultEl = doc.select("div:containsOwn(kisebb), div:containsOwn(nagyobb), div:containsOwn(eltalál), div:containsOwn(Gratulál), div:containsOwn(szám)").firstOrNull()
+                val resultText = resultEl?.text()?.trim()
+                    ?: doc.select("center").lastOrNull()?.text()?.trim()
+                    ?: "Tipp elküldve: $number"
                 Result.success(resultText)
             } else Result.failure(Exception("Számjáték hiba: ${resp.code()}"))
         } catch (e: Exception) {

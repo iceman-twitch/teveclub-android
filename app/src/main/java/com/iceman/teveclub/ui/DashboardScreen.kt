@@ -440,6 +440,52 @@ fun MiniFab(
 }
 
 @Composable
+fun MiniFabWithImage(
+    imageUrl: String,
+    imageLoader: ImageLoader,
+    label: String,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.End
+    ) {
+        Text(
+            label,
+            modifier = Modifier
+                .shadow(4.dp, RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.White)
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            color = TeveColors.BodyText,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.width(8.dp))
+        FloatingActionButton(
+            onClick = onClick,
+            modifier = Modifier.size(44.dp),
+            backgroundColor = TeveColors.PanelBackground,
+            elevation = FloatingActionButtonDefaults.elevation(4.dp)
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(imageUrl)
+                    .crossfade(true)
+                    .build(),
+                imageLoader = imageLoader,
+                contentDescription = "Trükk",
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        }
+    }
+}
+
+@Composable
 fun PickerDialog(
     title: String,
     onDismiss: () -> Unit,

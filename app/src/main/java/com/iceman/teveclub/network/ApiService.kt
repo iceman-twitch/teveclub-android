@@ -55,7 +55,7 @@ interface ApiService {
     @FormUrlEncoded
     @POST("egyszam.pet")
     suspend fun guessNumber(
-        @Field("honnan") from: String = "403",
+        @Field("honnan") guess: String,
         @Field("tipp") submit: String = "Ez a tippem!"
     ): Response<ResponseBody>
 }
