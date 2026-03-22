@@ -183,15 +183,27 @@ fun DashboardScreen(vm: TeveViewModel) {
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    s.trick?.let { trick ->
-                        Text(
-                            trick,
-                            color = Color.White.copy(alpha = 0.8f),
-                            fontSize = 12.sp
-                        )
-                    }
                 }
             }
+        }
+
+        // === ACTIVITY TEXT (bottom-center) ===
+        status.value?.trick?.let { trick ->
+            Text(
+                trick,
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 140.dp, start = 32.dp, end = 32.dp)
+                    .background(
+                        Color.Black.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
         }
 
         // === STATUS MESSAGE (bottom overlay) ===
@@ -631,7 +643,7 @@ fun FeedProgressBar(
     iconUrl: String?,
     imageLoader: ImageLoader
 ) {
-    val progress = percent.toFloat() / 100f
+    val progress = if (max > 0) count.toFloat() / max.toFloat() else 0f
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = tween(durationMillis = 800)

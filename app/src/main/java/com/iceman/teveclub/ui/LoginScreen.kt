@@ -67,26 +67,12 @@ fun LoginScreen(vm: TeveViewModel) {
         ) {
             // Logo
             Image(
-                painter = painterResource(id = R.drawable.ic_teveclub_logo),
+                painter = painterResource(id = R.drawable.head),
                 contentDescription = "Teveclub",
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
                     .clip(RoundedCornerShape(10.dp))
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            Text(
-                "🐪 Teveclub",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = TeveColors.HeadingBrown
-            )
-            Text(
-                "Mobil kezelőfelület",
-                fontSize = 14.sp,
-                color = TeveColors.SubtitleBrown
             )
 
             Spacer(Modifier.height(24.dp))
@@ -209,7 +195,7 @@ fun LoginScreen(vm: TeveViewModel) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                     Spacer(Modifier.width(8.dp))
                 }
-                Text("🚀 Bejelentkezés", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Bejelentkezés", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
 
             // Error message
@@ -231,7 +217,7 @@ fun LoginScreen(vm: TeveViewModel) {
 
             // Footer
             Text(
-                "🐪 teveclub.hu",
+                "teveclub.hu",
                 fontSize = 12.sp,
                 color = TeveColors.SubtitleBrown.copy(alpha = 0.7f)
             )
